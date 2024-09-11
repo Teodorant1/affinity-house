@@ -11,7 +11,9 @@ datasource db {
     // Further reading:
     // https://next-auth.js.org/adapters/prisma#create-the-prisma-schema
     // https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference#string
-    url      = env("DATABASE_URL")
+    // url      = env("DATABASE_URL")
+    url       = env("NEXT_PRIVATE_DATABASE_URL")
+    directUrl = env("NEXT_PRIVATE_DIRECT_DATABASE_URL")
 }
 
 model Post {
@@ -20,9 +22,9 @@ model Post {
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 
-    createdBy   User   @relation(fields: [createdById], references: [id])
+    createdBy   User1   @relation(fields: [createdById], references: [id])
     createdById String
-
+    booleanish     Boolean? 
     @@index([name])
 }
 
@@ -40,7 +42,7 @@ model Account {
     scope                    String?
     id_token                 String? // @db.Text
     session_state            String?
-    user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+    user                     User1    @relation(fields: [userId], references: [id], onDelete: Cascade)
     refresh_token_expires_in Int?
 
     @@unique([provider, providerAccountId])
@@ -51,10 +53,10 @@ model Session {
     sessionToken String   @unique
     userId       String
     expires      DateTime
-    user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    user         User1     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-model User {
+model User1 {
     id            String    @id @default(cuid())
     name          String?
     email         String?   @unique
@@ -71,4 +73,105 @@ model VerificationToken {
     expires    DateTime
 
     @@unique([identifier, token])
+}
+
+model BackgroundCheck {
+  id                         String   @id @default(cuid())
+  dateOfBirth                DateTime? @db.Timestamp(6)
+  homeCountry                String?  @db.Text
+  status                     String   @default("pending")
+  createdAt                  DateTime @default(now()) @db.Timestamp(6)
+  updatedAt                  DateTime @default(now()) @db.Timestamp(6)
+  authenticateVerificationId String?  @db.Text
+
+// Relations
+
+//  @@unique([userId], name: "unique_user_background_check")
+
+   User User @relation(fields: [Userid], references: [id])
+   Userid String
+}
+
+model Payment {
+  id             String   @id @default(cuid())
+  userId         String
+  stripePaymentId String? @db.Text
+  amount         Int?     @db.Integer
+  status         String?  @db.Text
+  paymentMethod  String?  @db.Text
+  createdAt      DateTime @default(dbgenerated("timezone('utc', now())")) @db.Timestamp(6)
+
+// Relations
+  user           User    @relation(fields: [userId], references: [id])
+}
+
+model Profile {
+  id            String   @id 
+  updatedAt     DateTime? @db.Timestamp(6)
+  username      String?  @unique @db.Text
+  fullName      String?  @db.Text
+  avatarUrl     String?  @db.Text
+  website       String?  @db.Text
+  phoneNumber   String?  @db.Text
+  location      String?  @db.Text
+  gender        String?  @db.Text
+
+  
+ // Relations
+  user          User     @relation(fields: [id], references: [id], onDelete: Cascade)
+ 
+//  @@check([gender], 'gender_check', "gender IN ('male', 'female')")
+//  @@check([location], 'location_check', "location IN ('2478 Penmar Avenue', '624 Hilgard Avenue')")
+//  @@check([username], 'username_length', "char_length(username) >= 3")
+
+  TourBooking TourBooking[]
+}
+model User {
+    id            String    @id @default(cuid())
+    name          String?
+    email         String?   @unique
+    emailVerified DateTime?
+    image         String?
+
+
+    UserStatus UserStatus[]
+
+    Profile Profile[]
+
+    Payment Payment[]
+
+    BackgroundCheck BackgroundCheck[]
+}
+
+
+model TourBooking {
+  id          String   @id @default(cuid())
+  profileId   String   
+  name        String?  @db.Text
+  email       String?  @db.Text
+  phone       String?  @db.Text
+  uid         String?  @unique @db.Text
+  bookingId   Int?     @db.Integer
+  startTime   DateTime? @db.Timestamp(6)
+  timeZone    String?  @db.Text
+  location    String?  @db.Text
+  eventTypeId Int?     @db.Integer
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime @default(now()) @db.Timestamp(6)
+
+//  Relations
+  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  @@index([email], name: "idx_tour_bookings_email")
+  // @@check([location], 'tour_bookings_location_check', "location IN ('hilgard', 'penmar')")
+}
+
+model UserStatus {
+  userId                 String   @id 
+  backgroundCheckPaid     Boolean? @default(false)
+  backgroundCheckPaidAt   DateTime? @db.Timestamp(6)
+
+  // Relations
+  user                   User     @relation(fields: [userId], references: [id])
+
+  @@index([userId], name: "idx_user_status_user_id")
 }

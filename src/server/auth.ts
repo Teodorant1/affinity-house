@@ -6,6 +6,7 @@ import {
 } from "next-auth";
 import { type Adapter } from "next-auth/adapters";
 import DiscordProvider from "next-auth/providers/discord";
+// import Email from "next-auth/providers/email";
 
 import { env } from "~/env";
 import { db } from "~/server/db";
@@ -20,6 +21,7 @@ declare module "next-auth" {
   interface Session extends DefaultSession {
     user: {
       id: string;
+      email: string;
       // ...other properties
       // role: UserRole;
     } & DefaultSession["user"];
@@ -48,9 +50,39 @@ export const authOptions: NextAuthOptions = {
   },
   adapter: PrismaAdapter(db) as Adapter,
   providers: [
-    DiscordProvider({
-      clientId: env.DISCORD_CLIENT_ID,
-      clientSecret: env.DISCORD_CLIENT_SECRET,
+    // DiscordProvider({
+    //   clientId: env.DISCORD_CLIENT_ID,
+    //   clientSecret: env.DISCORD_CLIENT_SECRET,
+    // }),
+    CredentialsProvider({
+      name: "Credentials",
+      credentials: {
+        email: {
+          label: "email:",
+          type: "text",
+          placeholder: "your-email",
+        },
+        password: {
+          label: "password:",
+          type: "password",
+          placeholder: "your-password",
+        },
+      },
+      async authorize(credentials) {
+        // console.log(credentials);
+        // console.log("LOGGING IN");
+        console.log("credentials", credentials);
+
+        try {
+          return {
+            email: "dusanbojanic1@gmail.com",
+            name: "dusanbojanic",
+          };
+        } catch (error) {
+          // console.log(error);
+        }
+        return null;
+      },
     }),
     /**
      * ...add more providers here.
@@ -70,3 +102,17 @@ export const authOptions: NextAuthOptions = {
  * @see https://next-auth.js.org/configuration/nextjs
  */
 export const getServerAuthSession = () => getServerSession(authOptions);
+function CredentialsProvider(arg0: {
+  name: string;
+  credentials: {
+    email: { label: string; type: string; placeholder: string };
+    password: { label: string; type: string; placeholder: string };
+  };
+  authorize(credentials: any): Promise<any>;
+}): import("next-auth/providers/index").Provider {
+  throw new Error("Function not implemented.");
+}
+
+function sleep(arg0: number) {
+  throw new Error("Function not implemented.");
+}
